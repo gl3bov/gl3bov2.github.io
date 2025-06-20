@@ -2,441 +2,274 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Vector Operations in AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Vector Calculator</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.2.0/dist/aframe-master.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.0/build/ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-ar@1.0.0/dist/aframe-ar.min.js"></script>
     <style>
         body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        #info-panel {
+        #infoPanel {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            max-width: 300px;
+            padding: 10px;
+            border-radius: 5px;
             z-index: 100;
-        }
-        #formula-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
             max-width: 300px;
-            z-index: 100;
         }
-        .vector-label {
+        button {
+            background: #4CAF50;
+            border: none;
             color: white;
-            font-size: 24px;
-            font-weight: bold;
+            padding: 8px 16px;
             text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
         }
-        .operation {
-            margin: 10px 0;
+        select, input {
+            padding: 6px;
+            margin: 4px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .vector-info {
+            margin: 5px 0;
             padding: 5px;
-            border-bottom: 1px solid #444;
-        }
-        .formula {
-            font-family: 'Courier New', monospace;
-            color: #4CAF50;
-        }
-        .result {
-            font-weight: bold;
-            color: #FF9800;
-        }
-        #marker-info {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 100;
-            display: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
+    <!-- AR Scene -->
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-        <!-- Маркер для AR -->
-        <a-marker preset="custom">
-            <!-- Контейнер для всех 3D объектов -->
-            <a-entity id="vector-container">
-                <!-- Вектор A -->
-                <a-entity id="vector-a" class="vector" line="start: 0 0 0; end: 1 0 0; color: red">
-                    <a-cone position="1 0 0" radius-bottom="0.1" height="0.3" rotation="0 0 -90" material="color: red"></a-cone>
-                    <a-text class="vector-label" position="1.2 0 0" value="a" color="white"></a-text>
+        <!-- Marker 1 -->
+       <a-marker type="pattern" url="assets/vector_a_patt.patt">
+            <a-entity position="0 0 0">
+                <a-entity class="vector" geometry="primitive: cylinder; radius: 0.02; height: 1" 
+                          material="color: red" position="0 0.5 0" rotation="90 0 0">
+                    <a-entity geometry="primitive: cone; radiusBottom: 0.05; height: 0.1" 
+                              material="color: red" position="0 0.5 0" rotation="90 0 0"></a-entity>
                 </a-entity>
-                
-                <!-- Вектор B -->
-                <a-entity id="vector-b" class="vector" line="start: 0 0 0; end: 0 1 0; color: blue">
-                    <a-cone position="0 1 0" radius-bottom="0.1" height="0.3" rotation="90 0 0" material="color: blue"></a-cone>
-                    <a-text class="vector-label" position="0 1.2 0" value="b" color="white"></a-text>
-                </a-entity>
-                
-                <!-- Векторное произведение (a × b) -->
-                <a-entity id="cross-product" class="vector" line="start: 0 0 0; end: 0 0 1; color: green" visible="false">
-                    <a-cone position="0 0 1" radius-bottom="0.1" height="0.3" rotation="0 0 0" material="color: green"></a-cone>
-                    <a-text class="vector-label" position="0 0 1.2" value="a×b" color="white"></a-text>
-                </a-entity>
-                
-                <!-- Плоскость, образованная векторами -->
-                <a-plane id="vector-plane" position="0 0 0" width="2" height="2" rotation="0 0 0" material="color: yellow; opacity: 0.3; transparent: true" visible="false"></a-plane>
-                
-                <!-- Проекция вектора a на b -->
-                <a-entity id="projection-a" class="vector" line="start: 0 0 0; end: 0.5 0.5 0; color: #FF5252" visible="false">
-                    <a-text class="vector-label" position="0.5 0.5 0.1" value="proj a" color="#FF5252"></a-text>
-                </a-entity>
-                
-                <!-- Проекция вектора b на a -->
-                <a-entity id="projection-b" class="vector" line="start: 0 0 0; end: 0.5 0.5 0; color: #448AFF" visible="false">
-                    <a-text class="vector-label" position="0.5 0.5 0.1" value="proj b" color="#448AFF"></a-text>
-                </a-entity>
+                <a-text value="Vector A" position="0 1.2 0" color="black" align="center"></a-text>
             </a-entity>
-            
-            <!-- Координатные оси -->
-            <a-entity line="start: -1 0 0; end: 1 0 0; color: #888"></a-entity>
-            <a-entity line="start: 0 -1 0; end: 0 1 0; color: #888"></a-entity>
-            <a-entity line="start: 0 0 -1; end: 0 0 1; color: #888"></a-entity>
-            <a-text position="1.1 0 0" value="x" color="#888"></a-text>
-            <a-text position="0 1.1 0" value="y" color="#888"></a-text>
-            <a-text position="0 0 1.1" value="z" color="#888"></a-text>
         </a-marker>
         
-        <!-- Камера -->
+        <!-- Marker 2 -->
+        <a-marker type="pattern" url="https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro">
+            <a-entity position="0 0 0">
+                <a-entity class="vector" geometry="primitive: cylinder; radius: 0.02; height: 1" 
+                          material="color: blue" position="0 0.5 0" rotation="0 90 0">
+                    <a-entity geometry="primitive: cone; radiusBottom: 0.05; height: 0.1" 
+                              material="color: blue" position="0 0.5 0" rotation="0 90 0"></a-entity>
+                </a-entity>
+                <a-text value="Vector B" position="0 1.2 0" color="black" align="center"></a-text>
+            </a-entity>
+        </a-marker>
+        
+        <!-- Camera -->
         <a-entity camera></a-entity>
     </a-scene>
     
-    <!-- Панель с информацией -->
-    <div id="info-panel">
-        <div class="operation">
-            <h3>Dot Product (a · b)</h3>
-            <p class="formula">a · b = |a||b|cosθ</p>
-            <p class="result" id="dot-product-result">0.00</p>
+    <!-- Control Panel -->
+    <div id="infoPanel">
+        <h3>AR Vector Calculator</h3>
+        
+        <div>
+            <h4>Vector A (Red)</h4>
+            <div class="vector-info">
+                X: <input type="number" id="aX" value="1" step="0.1">
+                Y: <input type="number" id="aY" value="0" step="0.1">
+                Z: <input type="number" id="aZ" value="0" step="0.1">
+            </div>
         </div>
-        <div class="operation">
-            <h3>Cross Product (a × b)</h3>
-            <p class="formula">a × b = |a||b|sinθ n̂</p>
-            <p class="result" id="cross-product-result">(0.00, 0.00, 0.00)</p>
+        
+        <div>
+            <h4>Vector B (Blue)</h4>
+            <div class="vector-info">
+                X: <input type="number" id="bX" value="0" step="0.1">
+                Y: <input type="number" id="bY" value="1" step="0.1">
+                Z: <input type="number" id="bZ" value="0" step="0.1">
+            </div>
         </div>
-        <div class="operation">
-            <h3>Angle Between Vectors</h3>
-            <p class="formula">θ = cos⁻¹((a · b)/(|a||b|))</p>
-            <p class="result" id="angle-result">0.00°</p>
-        </div>
-    </div>
-    
-    <!-- Панель с формулами -->
-    <div id="formula-panel">
-        <h3>Vector Operations</h3>
-        <p>Drag vectors to rotate</p>
-        <p>Pinch to scale length</p>
-        <p>Tap to select vector</p>
-    </div>
-    
-    <!-- Инструкция по маркеру -->
-    <div id="marker-info">
-        <h2>Point camera at marker</h2>
-        <img src="/assets/textures/vector_a.png" alt="Marker" width="150">
-        <p>Print this marker or display on another device</p>
+        
+        <button id="updateVectors">Update Vectors</button>
+        <button id="dotProduct">Dot Product</button>
+        <button id="crossProduct">Cross Product</button>
+        <button id="angleBetween">Angle Between</button>
+        <button id="projection">Projection A on B</button>
+        
+        <div id="result" style="margin-top: 10px; padding: 5px; background: rgba(255,255,255,0.2); border-radius: 3px;"></div>
+        
+        <h4>Geometric Problems</h4>
+        <select id="problemType">
+            <option value="area">Area of Parallelogram</option>
+            <option value="volume">Volume of Parallelepiped</option>
+            <option value="lineDistance">Distance from Point to Line</option>
+            <option value="planeDistance">Distance from Point to Plane</option>
+        </select>
+        <button id="solveProblem">Solve</button>
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
-            const markerInfo = document.getElementById('marker-info');
+            const vectorA = document.querySelector('a-marker[url*="kanji"] .vector');
+            const vectorB = document.querySelector('a-marker[url*="hiro"] .vector');
+            const resultDiv = document.getElementById('result');
             
-            // Показываем инструкцию, если маркер не обнаружен
-            setTimeout(() => {
-                if (!scene.is('markerFound')) {
-                    markerInfo.style.display = 'block';
-                }
-            }, 2000);
+            // Current vectors
+            let vecA = {x: 1, y: 0, z: 0};
+            let vecB = {x: 0, y: 1, z: 0};
             
-            scene.addEventListener('markerFound', () => {
-                markerInfo.style.display = 'none';
-                initVectorControls();
-            });
-            
-            scene.addEventListener('markerLost', () => {
-                markerInfo.style.display = 'block';
-            });
-        });
-        
-        function initVectorControls() {
-            const vectorA = document.getElementById('vector-a');
-            const vectorB = document.getElementById('vector-b');
-            const crossProduct = document.getElementById('cross-product');
-            const vectorPlane = document.getElementById('vector-plane');
-            const projectionA = document.getElementById('projection-a');
-            const projectionB = document.getElementById('projection-b');
-            
-            let selectedVector = null;
-            let initialTouch = null;
-            let initialLength = 1;
-            let initialDistance = 0;
-            
-            // Инициализация векторов
-            updateVectorOperations();
-            
-            // Обработчики событий для векторов
-            [vectorA, vectorB].forEach((vector, index) => {
-                vector.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
-                    selectedVector = vector;
-                    initialTouch = { x: e.clientX, y: e.clientY };
-                    initialLength = getVectorLength(vector);
-                });
+            // Update vectors based on input
+            document.getElementById('updateVectors').addEventListener('click', function() {
+                vecA = {
+                    x: parseFloat(document.getElementById('aX').value),
+                    y: parseFloat(document.getElementById('aY').value),
+                    z: parseFloat(document.getElementById('aZ').value)
+                };
                 
-                vector.addEventListener('touchstart', (e) => {
-                    e.stopPropagation();
-                    if (e.touches.length === 1) {
-                        selectedVector = vector;
-                        initialTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                        initialLength = getVectorLength(vector);
-                    }
-                });
+                vecB = {
+                    x: parseFloat(document.getElementById('bX').value),
+                    y: parseFloat(document.getElementById('bY').value),
+                    z: parseFloat(document.getElementById('bZ').value)
+                };
+                
+                updateVectorVisualization();
+                resultDiv.textContent = "Vectors updated!";
             });
             
-            // Обработка перемещения (вращение вектора)
-            document.addEventListener('mousemove', (e) => {
-                if (selectedVector && initialTouch) {
-                    const deltaX = e.clientX - initialTouch.x;
-                    const deltaY = e.clientY - initialTouch.y;
-                    
-                    // Вращение вокруг осей Y и X
-                    const rotationY = deltaX * 0.5;
-                    const rotationX = -deltaY * 0.5;
-                    
-                    const currentRotation = selectedVector.getAttribute('rotation');
-                    selectedVector.setAttribute('rotation', {
-                        x: currentRotation.x + rotationX,
-                        y: currentRotation.y + rotationY,
-                        z: currentRotation.z
-                    });
-                    
-                    initialTouch = { x: e.clientX, y: e.clientY };
-                    updateVectorOperations();
-                }
+            // Dot product
+            document.getElementById('dotProduct').addEventListener('click', function() {
+                const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
+                resultDiv.textContent = `Dot Product (A·B): ${dot.toFixed(2)}`;
             });
             
-            document.addEventListener('touchmove', (e) => {
-                if (selectedVector && initialTouch && e.touches.length === 1) {
-                    const deltaX = e.touches[0].clientX - initialTouch.x;
-                    const deltaY = e.touches[0].clientY - initialTouch.y;
-                    
-                    const rotationY = deltaX * 0.5;
-                    const rotationX = -deltaY * 0.5;
-                    
-                    const currentRotation = selectedVector.getAttribute('rotation');
-                    selectedVector.setAttribute('rotation', {
-                        x: currentRotation.x + rotationX,
-                        y: currentRotation.y + rotationY,
-                        z: currentRotation.z
-                    });
-                    
-                    initialTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    updateVectorOperations();
-                } else if (e.touches.length === 2) {
-                    // Обработка масштабирования (изменение длины вектора)
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    
-                    const currentDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    
-                    if (initialDistance === 0) {
-                        initialDistance = currentDistance;
-                    } else {
-                        const scale = currentDistance / initialDistance;
-                        const newLength = initialLength * scale;
+            // Cross product
+            document.getElementById('crossProduct').addEventListener('click', function() {
+                const crossX = vecA.y * vecB.z - vecA.z * vecB.y;
+                const crossY = vecA.z * vecB.x - vecA.x * vecB.z;
+                const crossZ = vecA.x * vecB.y - vecA.y * vecB.x;
+                
+                resultDiv.textContent = `Cross Product (A×B): (${crossX.toFixed(2)}, ${crossY.toFixed(2)}, ${crossZ.toFixed(2)})`;
+            });
+            
+            // Angle between vectors
+            document.getElementById('angleBetween').addEventListener('click', function() {
+                const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
+                const magA = Math.sqrt(vecA.x**2 + vecA.y**2 + vecA.z**2);
+                const magB = Math.sqrt(vecB.x**2 + vecB.y**2 + vecB.z**2);
+                const angleRad = Math.acos(dot / (magA * magB));
+                const angleDeg = angleRad * 180 / Math.PI;
+                
+                resultDiv.textContent = `Angle between vectors: ${angleDeg.toFixed(2)}°`;
+            });
+            
+            // Projection of A on B
+            document.getElementById('projection').addEventListener('click', function() {
+                const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
+                const magB = Math.sqrt(vecB.x**2 + vecB.y**2 + vecB.z**2);
+                const projectionLength = dot / magB;
+                
+                resultDiv.textContent = `Projection of A on B: length = ${projectionLength.toFixed(2)}`;
+            });
+            
+            // Solve geometric problems
+            document.getElementById('solveProblem').addEventListener('click', function() {
+                const problemType = document.getElementById('problemType').value;
+                let solution = "";
+                
+                switch(problemType) {
+                    case 'area':
+                        // Area of parallelogram formed by A and B
+                        const crossX = vecA.y * vecB.z - vecA.z * vecB.y;
+                        const crossY = vecA.z * vecB.x - vecA.x * vecB.z;
+                        const crossZ = vecA.x * vecB.y - vecA.y * vecB.x;
+                        const area = Math.sqrt(crossX**2 + crossY**2 + crossZ**2);
+                        solution = `Area of parallelogram: ${area.toFixed(2)}`;
+                        break;
                         
-                        if (selectedVector) {
-                            setVectorLength(selectedVector, newLength);
-                            updateVectorOperations();
-                        }
-                    }
-                }
-            });
-            
-            document.addEventListener('mouseup', () => {
-                selectedVector = null;
-                initialTouch = null;
-            });
-            
-            document.addEventListener('touchend', () => {
-                selectedVector = null;
-                initialTouch = null;
-                initialDistance = 0;
-            });
-            
-            // Функции для работы с векторами
-            function getVectorEndPoint(vector) {
-                const rotation = vector.getAttribute('rotation');
-                const length = getVectorLength(vector);
-                
-                // Преобразуем углы Эйлера в вектор направления
-                const theta = THREE.MathUtils.degToRad(rotation.x);
-                const phi = THREE.MathUtils.degToRad(rotation.y);
-                
-                const x = length * Math.cos(phi) * Math.cos(theta);
-                const y = length * Math.sin(phi) * Math.cos(theta);
-                const z = length * Math.sin(theta);
-                
-                return { x, y, z };
-            }
-            
-            function getVectorLength(vector) {
-                const line = vector.querySelector('[line]');
-                const start = new THREE.Vector3().setFromMatrixPosition(
-                    new THREE.Matrix4().fromArray(line.object3D.matrixWorld)
-                );
-                const end = new THREE.Vector3(
-                    line.getAttribute('end').x,
-                    line.getAttribute('end').y,
-                    line.getAttribute('end').z
-                ).applyMatrix4(line.object3D.matrixWorld);
-                
-                return start.distanceTo(end);
-            }
-            
-            function setVectorLength(vector, length) {
-                const endPoint = getVectorEndPoint(vector);
-                const normalized = normalizeVector(endPoint);
-                
-                const newEnd = {
-                    x: normalized.x * length,
-                    y: normalized.y * length,
-                    z: normalized.z * length
-                };
-                
-                vector.setAttribute('line', 'end', `${newEnd.x} ${newEnd.y} ${newEnd.z}`);
-                
-                // Обновляем позицию конуса и текста
-                const cone = vector.querySelector('a-cone');
-                const text = vector.querySelector('a-text');
-                
-                cone.setAttribute('position', `${newEnd.x} ${newEnd.y} ${newEnd.z}`);
-                text.setAttribute('position', `${newEnd.x * 1.2} ${newEnd.y * 1.2} ${newEnd.z * 1.2}`);
-            }
-            
-            function normalizeVector(v) {
-                const length = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-                return {
-                    x: v.x / length,
-                    y: v.y / length,
-                    z: v.z / length
-                };
-            }
-            
-            function updateVectorOperations() {
-                const a = getVectorEndPoint(vectorA);
-                const b = getVectorEndPoint(vectorB);
-                
-                // Скалярное произведение
-                const dotProduct = a.x * b.x + a.y * b.y + a.z * b.z;
-                document.getElementById('dot-product-result').textContent = dotProduct.toFixed(2);
-                
-                // Векторное произведение
-                const crossX = a.y * b.z - a.z * b.y;
-                const crossY = a.z * b.x - a.x * b.z;
-                const crossZ = a.x * b.y - a.y * b.x;
-                
-                document.getElementById('cross-product-result').textContent = 
-                    `(${crossX.toFixed(2)}, ${crossY.toFixed(2)}, ${crossZ.toFixed(2)})`;
-                
-                // Угол между векторами
-                const angle = Math.acos(dotProduct / (getVectorLength(vectorA) * getVectorLength(vectorB)));
-                document.getElementById('angle-result').textContent = 
-                    `${THREE.MathUtils.radToDeg(angle).toFixed(2)}°`;
-                
-                // Обновляем векторное произведение
-                crossProduct.setAttribute('line', 'end', `${crossX} ${crossY} ${crossZ}`);
-                crossProduct.setAttribute('visible', 'true');
-                
-                const crossCone = crossProduct.querySelector('a-cone');
-                const crossText = crossProduct.querySelector('a-text');
-                
-                crossCone.setAttribute('position', `${crossX} ${crossY} ${crossZ}`);
-                crossText.setAttribute('position', `${crossX * 1.2} ${crossY * 1.2} ${crossZ * 1.2}`);
-                
-                // Обновляем плоскость
-                if (Math.abs(crossX) > 0.01 || Math.abs(crossY) > 0.01 || Math.abs(crossZ) > 0.01) {
-                    vectorPlane.setAttribute('visible', 'true');
-                    
-                    // Вычисляем нормаль к плоскости
-                    const normal = normalizeVector({ x: crossX, y: crossY, z: crossZ });
-                    const angleToZ = Math.acos(normal.z);
-                    const axis = normalizeVector({
-                        x: normal.y,
-                        y: -normal.x,
-                        z: 0
-                    });
-                    
-                    const rotationAngle = THREE.MathUtils.radToDeg(angleToZ);
-                    const rotationAxis = `${axis.x} ${axis.y} ${axis.z}`;
-                    
-                    vectorPlane.setAttribute('rotation', {
-                        x: axis.x * rotationAngle,
-                        y: axis.y * rotationAngle,
-                        z: axis.z * rotationAngle
-                    });
-                } else {
-                    vectorPlane.setAttribute('visible', 'false');
+                    case 'volume':
+                        // Volume of parallelepiped formed by A, B and C (using (1,1,1) as C)
+                        const scalarTriple = vecA.x * (vecB.y * 1 - vecB.z * 1) - 
+                                             vecA.y * (vecB.x * 1 - vecB.z * 1) + 
+                                             vecA.z * (vecB.x * 1 - vecB.y * 1);
+                        const volume = Math.abs(scalarTriple);
+                        solution = `Volume of parallelepiped: ${volume.toFixed(2)} (using C=(1,1,1))`;
+                        break;
+                        
+                    case 'lineDistance':
+                        // Distance from point (0,0,0) to line defined by vector A
+                        const crossProdX = 0 * vecA.z - 0 * vecA.y;
+                        const crossProdY = 0 * vecA.x - 0 * vecA.z;
+                        const crossProdZ = 0 * vecA.y - 0 * vecA.x;
+                        const crossMag = Math.sqrt(crossProdX**2 + crossProdY**2 + crossProdZ**2);
+                        const lineMag = Math.sqrt(vecA.x**2 + vecA.y**2 + vecA.z**2);
+                        const distance = crossMag / lineMag;
+                        solution = `Distance from (0,0,0) to line: ${distance.toFixed(2)}`;
+                        break;
+                        
+                    case 'planeDistance':
+                        // Distance from point (0,0,0) to plane defined by normal vector A×B
+                        const nX = vecA.y * vecB.z - vecA.z * vecB.y;
+                        const nY = vecA.z * vecB.x - vecA.x * vecB.z;
+                        const nZ = vecA.x * vecB.y - vecA.y * vecB.x;
+                        const planeMag = Math.sqrt(nX**2 + nY**2 + nZ**2);
+                        const planeDistance = Math.abs(nX * 0 + nY * 0 + nZ * 0) / planeMag;
+                        solution = `Distance from (0,0,0) to plane: ${planeDistance.toFixed(2)}`;
+                        break;
                 }
                 
-                // Обновляем проекции
-                updateProjections(a, b);
+                resultDiv.textContent = solution;
+            });
+            
+            // Update vector visualization
+            function updateVectorVisualization() {
+                // Update vector A
+                const lengthA = Math.sqrt(vecA.x**2 + vecA.y**2 + vecA.z**2);
+                const angleA = Math.atan2(Math.sqrt(vecA.y**2 + vecA.z**2), vecA.x);
+                const rotationA = vecA.z === 0 ? 0 : Math.atan2(vecA.y, vecA.z) * 180 / Math.PI;
+                
+                vectorA.setAttribute('rotation', {
+                    x: 90 - angleA * 180 / Math.PI,
+                    y: rotationA,
+                    z: 0
+                });
+                vectorA.setAttribute('height', lengthA);
+                vectorA.querySelector('a-entity').setAttribute('position', `0 ${lengthA/2} 0`);
+                
+                // Update vector B
+                const lengthB = Math.sqrt(vecB.x**2 + vecB.y**2 + vecB.z**2);
+                const angleB = Math.atan2(Math.sqrt(vecB.y**2 + vecB.z**2), vecB.x);
+                const rotationB = vecB.z === 0 ? 0 : Math.atan2(vecB.y, vecB.z) * 180 / Math.PI;
+                
+                vectorB.setAttribute('rotation', {
+                    x: 90 - angleB * 180 / Math.PI,
+                    y: rotationB,
+                    z: 0
+                });
+                vectorB.setAttribute('height', lengthB);
+                vectorB.querySelector('a-entity').setAttribute('position', `0 ${lengthB/2} 0`);
             }
             
-            function updateProjections(a, b) {
-                const aLength = getVectorLength(vectorA);
-                const bLength = getVectorLength(vectorB);
-                const dotProduct = a.x * b.x + a.y * b.y + a.z * b.z;
-                
-                // Проекция a на b
-                const projectionScaleA = dotProduct / (bLength * bLength);
-                const projectionA = {
-                    x: b.x * projectionScaleA,
-                    y: b.y * projectionScaleA,
-                    z: b.z * projectionScaleA
-                };
-                
-                projectionA.setAttribute('line', 'end', 
-                    `${projectionA.x} ${projectionA.y} ${projectionA.z}`);
-                projectionA.setAttribute('visible', 'true');
-                
-                // Проекция b на a
-                const projectionScaleB = dotProduct / (aLength * aLength);
-                const projectionB = {
-                    x: a.x * projectionScaleB,
-                    y: a.y * projectionScaleB,
-                    z: a.z * projectionScaleB
-                };
-                
-                projectionB.setAttribute('line', 'end', 
-                    `${projectionB.x} ${projectionB.y} ${projectionB.z}`);
-                projectionB.setAttribute('visible', 'true');
-            }
-        }
+            // Initialize
+            updateVectorVisualization();
+        });
     </script>
 </body>
 </html>
