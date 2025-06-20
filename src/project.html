@@ -1,127 +1,339 @@
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
 <meta charset="utf-8">
 <title>AR Educational Project</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-image-three.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-three.prod.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
 <style>
-body { margin: 0; font-family: Arial, sans-serif; }
-#container { position: relative; width: 100%; height: 100vh; overflow: hidden; }
+body { 
+  margin: 0; 
+  padding: 0; 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+  touch-action: none;
+  overscroll-behavior: none;
+  background: #000;
+}
+#container { 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  overflow: hidden; 
+}
 #ui-panel {
-position: absolute; top: 10px; left: 10px; z-index: 100;
-background: rgba(0,0,0,0.7); color: white; padding: 10px;
-border-radius: 5px; max-width: 300px;
+  position: absolute; 
+  top: env(safe-area-inset-top, 10px); 
+  left: 10px; 
+  right: 10px;
+  z-index: 100;
+  background: rgba(0,0,0,0.7); 
+  color: white; 
+  padding: 10px;
+  border-radius: 5px; 
+  max-width: 300px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 #loading {
-position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-z-index: 200; background: white; padding: 20px; border-radius: 10px;
+  position: fixed; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%);
+  z-index: 200; 
+  background: rgba(255,255,255,0.9); 
+  padding: 20px; 
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+#loading h3 {
+  margin-top: 0;
+}
+.progress-bar {
+  width: 100%;
+  height: 5px;
+  background: #eee;
+  margin-top: 10px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress {
+  height: 100%;
+  background: #007aff;
+  width: 0%;
+  transition: width 0.3s ease;
 }
 </style>
 </head>
 <body>
 <div id="container">
-<div id="loading">
-<h3>Завантаження AR додатку...</h3>
-<p>Наведіть камеру на маркер</p>
+  <div id="loading">
+    <h3>Завантаження AR додатку...</h3>
+    <p>Наведіть камеру на маркер</p>
+    <div class="progress-bar">
+      <div class="progress" id="progress"></div>
+    </div>
+  </div>
+  <div id="ui-panel">
+    <h4 id="title">AR Educational Experience</h4>
+    <div id="info">Знайдіть маркер для початку</div>
+    <div id="controls"></div>
+  </div>
 </div>
-<div id="ui-panel">
-<h4 id="title">AR Educational Experience</h4>
-<div id="info">Знайдіть маркер для початку</div>
-<div id="controls"></div>
-</div>
-</div>
+
 <script type="module">
-const THREE = window.MINDAR.IMAGE.THREE;
+// Отложенная загрузка Three.js до момента необходимости
+let THREE;
+
 // AR Application Class
 class AREducationalApp {
-constructor() {
-this.mindarThree = null;
-this.scene = null;
-this.camera = null;
-this.renderer = null;
-this.isStarted = false;
+  constructor() {
+    this.mindarThree = null;
+    this.scene = null;
+    this.camera = null;
+    this.renderer = null;
+    this.isStarted = false;
+    this.assetsLoaded = false;
+    this.animationFrameId = null;
+    this.mlInterval = null;
+  }
+
+  async init() {
+    try {
+      // Показываем прогресс загрузки
+      this.updateProgress(10);
+      
+      // Загружаем Three.js динамически
+      THREE = window.MINDAR.IMAGE.THREE;
+      
+      // Инициализация MindAR с оптимизированными параметрами
+      this.mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.getElementById('container'),
+        imageTargetSrc: './assets/targets.mind',
+        maxTrack: 1, // Ограничиваем количество отслеживаемых маркеров
+        uiLoading: 'no', // Отключаем стандартный UI загрузки
+        uiScanning: 'no', // Отключаем стандартный UI сканирования
+        filterMinCF: 0.01, // Параметры для более стабильного трекинга
+        filterBeta: 1000,
+      });
+
+      this.updateProgress(30);
+      
+      const { renderer, scene, camera } = this.mindarThree;
+      this.renderer = renderer;
+      this.scene = scene;
+      this.camera = camera;
+      
+      // Оптимизация рендерера для мобильных устройств
+      this.renderer.setPixelRatio(window.devicePixelRatio ? Math.min(1.5, window.devicePixelRatio) : 1);
+      this.renderer.outputEncoding = THREE.sRGBEncoding;
+      
+      // Оптимизированное освещение
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.position.set(0, 1, 0);
+      scene.add(directionalLight);
+
+      this.updateProgress(50);
+      
+      // Загрузка образовательного контента
+      await this.setupEducationalContent();
+      
+      // Загрузка ML модели, если требуется
+      if (typeof mlModel !== 'undefined') {
+        await this.setupMLFeatures();
+      }
+
+      this.updateProgress(80);
+      
+      // Запуск AR
+      await this.mindarThree.start();
+      this.isStarted = true;
+      
+      // Скрываем индикатор загрузки с задержкой для плавности
+      setTimeout(() => {
+        document.getElementById('loading').style.display = 'none';
+        this.updateProgress(100);
+      }, 300);
+      
+      // Запускаем анимационный цикл
+      this.startAnimationLoop();
+      
+    } catch (error) {
+      console.error('Ошибка инициализации AR:', error);
+      document.getElementById('info').innerHTML = 'Помилка завантаження. Будь ласка, оновіть сторінку.';
+    }
+  }
+  
+  updateProgress(percent) {
+    document.getElementById('progress').style.width = `${percent}%`;
+  }
+
+  async setupEducationalContent() {
+    // Создаем якоря для маркеров
+    const anchor0 = this.mindarThree.addAnchor(0);
+    
+    // Оптимизированная 3D модель с простой геометрией
+    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const material = new THREE.MeshLambertMaterial({ 
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.9
+    });
+    const cube = new THREE.Mesh(geometry, material);
+    cube.castShadow = true;
+    anchor0.group.add(cube);
+    
+    // Оптимизированные обработчики событий
+    const infoElement = document.getElementById('info');
+    anchor0.onTargetFound = () => {
+      infoElement.textContent = 'Маркер знайдено! Досліджуйте об\'єкт.';
+      this.onMarkerFound(0);
+    };
+    anchor0.onTargetLost = () => {
+      infoElement.textContent = 'Знайдіть маркер для продовження.';
+      this.onMarkerLost(0);
+    };
+    
+    this.assetsLoaded = true;
+  }
+
+  setupMLFeatures() {
+    // Инициализация ML с интервалом, оптимизированным для мобильных устройств
+    this.mlInterval = setInterval(() => {
+      if (this.isStarted && mlModel) {
+        requestIdleCallback(() => {
+          this.processMLData();
+        }, { timeout: 500 });
+      }
+    }, 1500); // Увеличенный интервал для экономии батареи
+  }
+
+  processMLData() {
+    // Обработка данных ML с проверкой производительности
+    if ('performance' in window) {
+      const startTime = performance.now();
+      
+      // Ваша ML логика здесь
+      
+      const duration = performance.now() - startTime;
+      if (duration > 50) {
+        console.warn('ML processing took too long:', duration, 'ms');
+      }
+    } else {
+      // Fallback обработка
+    }
+  }
+
+  startAnimationLoop() {
+    // Оптимизированный анимационный цикл
+    const animate = () => {
+      if (!this.isStarted) return;
+      
+      // Используем requestAnimationFrame для синхронизации с частотой обновления экрана
+      this.animationFrameId = requestAnimationFrame(animate);
+      
+      // Обновление сцены только если активен маркер
+      if (this.assetsLoaded) {
+        this.update();
+        this.renderer.render(this.scene, this.camera);
+      }
+    };
+    
+    animate();
+  }
+
+  onMarkerFound(markerIndex) {
+    console.log(`Marker ${markerIndex} found`);
+    // Дополнительные действия при обнаружении маркера
+  }
+
+  onMarkerLost(markerIndex) {
+    console.log(`Marker ${markerIndex} lost`);
+    // Дополнительные действия при потере маркера
+  }
+
+  update() {
+    // Оптимизированные обновления сцены
+    // Используйте простые анимации для мобильных устройств
+  }
+  
+  cleanup() {
+    // Очистка ресурсов для предотвращения утечек памяти
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+    if (this.mlInterval) {
+      clearInterval(this.mlInterval);
+    }
+    if (this.mindarThree) {
+      this.mindarThree.stop();
+    }
+    this.isStarted = false;
+  }
 }
-async init() {
-// Initialize MindAR
-this.mindarThree = new window.MINDAR.IMAGE.MindARThree({
-container: document.getElementById('container'),
-imageTargetSrc: './assets/targets.mind', // Your compiled markers
-});
-const { renderer, scene, camera } = this.mindarThree;
-this.renderer = renderer;
-this.scene = scene;
-this.camera = camera;
-// Add lighting
-const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-scene.add(light);
-// Setup educational content
-await this.setupEducationalContent();
-// Setup ML functionality for CS students
-if (mlModel) {
-this.setupMLFeatures();
-}
-// Start AR
-await this.mindarThree.start();
-document.getElementById('loading').style.display = 'none';
-this.isStarted = true;
-// Animation loop
-this.renderer.setAnimationLoop(() => {
-this.update();
-this.renderer.render(this.scene, this.camera);
-});
-}
-async setupEducationalContent() {
-// Create anchors for each marker
-const anchor0 = this.mindarThree.addAnchor(0);
-// Example: Add 3D educational content
-const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-const cube = new THREE.Mesh(geometry, material);
-anchor0.group.add(cube);
-// Add interactivity
-anchor0.onTargetFound = () => {
-document.getElementById('info').innerHTML = 'Маркер знайдено! Досліджуйте об\'єкт.';
-this.onMarkerFound(0);
-};
-anchor0.onTargetLost = () => {
-document.getElementById('info').innerHTML = 'Знайдіть маркер для продовження.';
-this.onMarkerLost(0);
-};
-}
-setupMLFeatures() {
-// Implement ML features for CS students
-// Example: Emotion detection, gesture recognition, etc.
-setInterval(() => {
-if (this.isStarted && mlModel) {
-this.processMLData();
-}
-}, 1000);
-}
-processMLData() {
-// Process ML data here
-// Example: Analyze user emotions, gestures, etc.
-}
-onMarkerFound(markerIndex) {
-// Handle marker found events
-console.log(`Marker ${markerIndex} found`);
-}
-onMarkerLost(markerIndex) {
-// Handle marker lost events
-console.log(`Marker ${markerIndex} lost`);
-}
-update() {
-// Update educational content
-// Animation, calculations, ML processing
-}
-}
-// Initialize application
+
+// Инициализация приложения с обработкой ошибок
 document.addEventListener('DOMContentLoaded', async () => {
-await loadMLModel();
-const app = new AREducationalApp();
-await app.init();
+  // Проверяем поддержку WebGL
+  if (!isWebGLAvailable()) {
+    document.getElementById('loading').innerHTML = `
+      <h3>Помилка</h3>
+      <p>Ваш пристрій або браузер не підтримує WebGL. Будь ласка, спробуйте інший браузер.</p>
+    `;
+    return;
+  }
+  
+  // Проверяем поддержку API
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    document.getElementById('loading').innerHTML = `
+      <h3>Помилка</h3>
+      <p>Ваш браузер не підтримує доступ до камери.</p>
+    `;
+    return;
+  }
+  
+  try {
+    // Загружаем ML модель (если требуется)
+    if (typeof loadMLModel === 'function') {
+      await loadMLModel();
+    }
+    
+    const app = new AREducationalApp();
+    await app.init();
+    
+    // Очистка при закрытии или обновлении страницы
+    window.addEventListener('beforeunload', () => app.cleanup());
+    window.addEventListener('pagehide', () => app.cleanup());
+    
+  } catch (error) {
+    console.error('Ошибка запуска приложения:', error);
+    document.getElementById('loading').innerHTML = `
+      <h3>Помилка</h3>
+      <p>Не вдалося завантажити додаток. Будь ласка, спробуйте пізніше.</p>
+    `;
+  }
 });
+
+function isWebGLAvailable() {
+  try {
+    const canvas = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && 
+      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+  } catch (e) {
+    return false;
+  }
+}
 </script>
 </body>
 </html>
