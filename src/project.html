@@ -1,275 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Vector Calculator</title>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.0/build/ar.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-ar@1.0.0/dist/aframe-ar.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        #infoPanel {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 100;
-            max-width: 300px;
-        }
-        button {
-            background: #4CAF50;
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        select, input {
-            padding: 6px;
-            margin: 4px 0;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-        }
-        .vector-info {
-            margin: 5px 0;
-            padding: 5px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 3px;
-        }
-    </style>
+<meta charset="utf-8">
+<title>AR Educational Project</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-image-three.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<style>
+body { margin: 0; font-family: Arial, sans-serif; }
+#container { position: relative; width: 100%; height: 100vh; overflow: hidden; }
+#ui-panel {
+position: absolute; top: 10px; left: 10px; z-index: 100;
+background: rgba(0,0,0,0.7); color: white; padding: 10px;
+border-radius: 5px; max-width: 300px;
+}
+#loading {
+position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+z-index: 200; background: white; padding: 20px; border-radius: 10px;
+}
+</style>
 </head>
 <body>
-    <!-- AR Scene -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-        <!-- Marker 1 -->
-       <a-marker type="pattern" url="assets/vector_a_patt.patt">
-            <a-entity position="0 0 0">
-                <a-entity class="vector" geometry="primitive: cylinder; radius: 0.02; height: 1" 
-                          material="color: red" position="0 0.5 0" rotation="90 0 0">
-                    <a-entity geometry="primitive: cone; radiusBottom: 0.05; height: 0.1" 
-                              material="color: red" position="0 0.5 0" rotation="90 0 0"></a-entity>
-                </a-entity>
-                <a-text value="Vector A" position="0 1.2 0" color="black" align="center"></a-text>
-            </a-entity>
-        </a-marker>
-        
-        <!-- Marker 2 -->
-        <a-marker type="pattern" url="https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro">
-            <a-entity position="0 0 0">
-                <a-entity class="vector" geometry="primitive: cylinder; radius: 0.02; height: 1" 
-                          material="color: blue" position="0 0.5 0" rotation="0 90 0">
-                    <a-entity geometry="primitive: cone; radiusBottom: 0.05; height: 0.1" 
-                              material="color: blue" position="0 0.5 0" rotation="0 90 0"></a-entity>
-                </a-entity>
-                <a-text value="Vector B" position="0 1.2 0" color="black" align="center"></a-text>
-            </a-entity>
-        </a-marker>
-        
-        <!-- Camera -->
-        <a-entity camera></a-entity>
-    </a-scene>
-    
-    <!-- Control Panel -->
-    <div id="infoPanel">
-        <h3>AR Vector Calculator</h3>
-        
-        <div>
-            <h4>Vector A (Red)</h4>
-            <div class="vector-info">
-                X: <input type="number" id="aX" value="1" step="0.1">
-                Y: <input type="number" id="aY" value="0" step="0.1">
-                Z: <input type="number" id="aZ" value="0" step="0.1">
-            </div>
-        </div>
-        
-        <div>
-            <h4>Vector B (Blue)</h4>
-            <div class="vector-info">
-                X: <input type="number" id="bX" value="0" step="0.1">
-                Y: <input type="number" id="bY" value="1" step="0.1">
-                Z: <input type="number" id="bZ" value="0" step="0.1">
-            </div>
-        </div>
-        
-        <button id="updateVectors">Update Vectors</button>
-        <button id="dotProduct">Dot Product</button>
-        <button id="crossProduct">Cross Product</button>
-        <button id="angleBetween">Angle Between</button>
-        <button id="projection">Projection A on B</button>
-        
-        <div id="result" style="margin-top: 10px; padding: 5px; background: rgba(255,255,255,0.2); border-radius: 3px;"></div>
-        
-        <h4>Geometric Problems</h4>
-        <select id="problemType">
-            <option value="area">Area of Parallelogram</option>
-            <option value="volume">Volume of Parallelepiped</option>
-            <option value="lineDistance">Distance from Point to Line</option>
-            <option value="planeDistance">Distance from Point to Plane</option>
-        </select>
-        <button id="solveProblem">Solve</button>
-    </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const scene = document.querySelector('a-scene');
-            const vectorA = document.querySelector('a-marker[url*="kanji"] .vector');
-            const vectorB = document.querySelector('a-marker[url*="hiro"] .vector');
-            const resultDiv = document.getElementById('result');
-            
-            // Current vectors
-            let vecA = {x: 1, y: 0, z: 0};
-            let vecB = {x: 0, y: 1, z: 0};
-            
-            // Update vectors based on input
-            document.getElementById('updateVectors').addEventListener('click', function() {
-                vecA = {
-                    x: parseFloat(document.getElementById('aX').value),
-                    y: parseFloat(document.getElementById('aY').value),
-                    z: parseFloat(document.getElementById('aZ').value)
-                };
-                
-                vecB = {
-                    x: parseFloat(document.getElementById('bX').value),
-                    y: parseFloat(document.getElementById('bY').value),
-                    z: parseFloat(document.getElementById('bZ').value)
-                };
-                
-                updateVectorVisualization();
-                resultDiv.textContent = "Vectors updated!";
-            });
-            
-            // Dot product
-            document.getElementById('dotProduct').addEventListener('click', function() {
-                const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
-                resultDiv.textContent = `Dot Product (A·B): ${dot.toFixed(2)}`;
-            });
-            
-            // Cross product
-            document.getElementById('crossProduct').addEventListener('click', function() {
-                const crossX = vecA.y * vecB.z - vecA.z * vecB.y;
-                const crossY = vecA.z * vecB.x - vecA.x * vecB.z;
-                const crossZ = vecA.x * vecB.y - vecA.y * vecB.x;
-                
-                resultDiv.textContent = `Cross Product (A×B): (${crossX.toFixed(2)}, ${crossY.toFixed(2)}, ${crossZ.toFixed(2)})`;
-            });
-            
-            // Angle between vectors
-            document.getElementById('angleBetween').addEventListener('click', function() {
-                const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
-                const magA = Math.sqrt(vecA.x**2 + vecA.y**2 + vecA.z**2);
-                const magB = Math.sqrt(vecB.x**2 + vecB.y**2 + vecB.z**2);
-                const angleRad = Math.acos(dot / (magA * magB));
-                const angleDeg = angleRad * 180 / Math.PI;
-                
-                resultDiv.textContent = `Angle between vectors: ${angleDeg.toFixed(2)}°`;
-            });
-            
-            // Projection of A on B
-            document.getElementById('projection').addEventListener('click', function() {
-                const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
-                const magB = Math.sqrt(vecB.x**2 + vecB.y**2 + vecB.z**2);
-                const projectionLength = dot / magB;
-                
-                resultDiv.textContent = `Projection of A on B: length = ${projectionLength.toFixed(2)}`;
-            });
-            
-            // Solve geometric problems
-            document.getElementById('solveProblem').addEventListener('click', function() {
-                const problemType = document.getElementById('problemType').value;
-                let solution = "";
-                
-                switch(problemType) {
-                    case 'area':
-                        // Area of parallelogram formed by A and B
-                        const crossX = vecA.y * vecB.z - vecA.z * vecB.y;
-                        const crossY = vecA.z * vecB.x - vecA.x * vecB.z;
-                        const crossZ = vecA.x * vecB.y - vecA.y * vecB.x;
-                        const area = Math.sqrt(crossX**2 + crossY**2 + crossZ**2);
-                        solution = `Area of parallelogram: ${area.toFixed(2)}`;
-                        break;
-                        
-                    case 'volume':
-                        // Volume of parallelepiped formed by A, B and C (using (1,1,1) as C)
-                        const scalarTriple = vecA.x * (vecB.y * 1 - vecB.z * 1) - 
-                                             vecA.y * (vecB.x * 1 - vecB.z * 1) + 
-                                             vecA.z * (vecB.x * 1 - vecB.y * 1);
-                        const volume = Math.abs(scalarTriple);
-                        solution = `Volume of parallelepiped: ${volume.toFixed(2)} (using C=(1,1,1))`;
-                        break;
-                        
-                    case 'lineDistance':
-                        // Distance from point (0,0,0) to line defined by vector A
-                        const crossProdX = 0 * vecA.z - 0 * vecA.y;
-                        const crossProdY = 0 * vecA.x - 0 * vecA.z;
-                        const crossProdZ = 0 * vecA.y - 0 * vecA.x;
-                        const crossMag = Math.sqrt(crossProdX**2 + crossProdY**2 + crossProdZ**2);
-                        const lineMag = Math.sqrt(vecA.x**2 + vecA.y**2 + vecA.z**2);
-                        const distance = crossMag / lineMag;
-                        solution = `Distance from (0,0,0) to line: ${distance.toFixed(2)}`;
-                        break;
-                        
-                    case 'planeDistance':
-                        // Distance from point (0,0,0) to plane defined by normal vector A×B
-                        const nX = vecA.y * vecB.z - vecA.z * vecB.y;
-                        const nY = vecA.z * vecB.x - vecA.x * vecB.z;
-                        const nZ = vecA.x * vecB.y - vecA.y * vecB.x;
-                        const planeMag = Math.sqrt(nX**2 + nY**2 + nZ**2);
-                        const planeDistance = Math.abs(nX * 0 + nY * 0 + nZ * 0) / planeMag;
-                        solution = `Distance from (0,0,0) to plane: ${planeDistance.toFixed(2)}`;
-                        break;
-                }
-                
-                resultDiv.textContent = solution;
-            });
-            
-            // Update vector visualization
-            function updateVectorVisualization() {
-                // Update vector A
-                const lengthA = Math.sqrt(vecA.x**2 + vecA.y**2 + vecA.z**2);
-                const angleA = Math.atan2(Math.sqrt(vecA.y**2 + vecA.z**2), vecA.x);
-                const rotationA = vecA.z === 0 ? 0 : Math.atan2(vecA.y, vecA.z) * 180 / Math.PI;
-                
-                vectorA.setAttribute('rotation', {
-                    x: 90 - angleA * 180 / Math.PI,
-                    y: rotationA,
-                    z: 0
-                });
-                vectorA.setAttribute('height', lengthA);
-                vectorA.querySelector('a-entity').setAttribute('position', `0 ${lengthA/2} 0`);
-                
-                // Update vector B
-                const lengthB = Math.sqrt(vecB.x**2 + vecB.y**2 + vecB.z**2);
-                const angleB = Math.atan2(Math.sqrt(vecB.y**2 + vecB.z**2), vecB.x);
-                const rotationB = vecB.z === 0 ? 0 : Math.atan2(vecB.y, vecB.z) * 180 / Math.PI;
-                
-                vectorB.setAttribute('rotation', {
-                    x: 90 - angleB * 180 / Math.PI,
-                    y: rotationB,
-                    z: 0
-                });
-                vectorB.setAttribute('height', lengthB);
-                vectorB.querySelector('a-entity').setAttribute('position', `0 ${lengthB/2} 0`);
-            }
-            
-            // Initialize
-            updateVectorVisualization();
-        });
-    </script>
+<div id="container">
+<div id="loading">
+<h3>Завантаження AR додатку...</h3>
+<p>Наведіть камеру на маркер</p>
+</div>
+<div id="ui-panel">
+<h4 id="title">AR Educational Experience</h4>
+<div id="info">Знайдіть маркер для початку</div>
+<div id="controls"></div>
+</div>
+</div>
+<script type="module">
+const THREE = window.MINDAR.IMAGE.THREE;
+// AR Application Class
+class AREducationalApp {
+constructor() {
+this.mindarThree = null;
+this.scene = null;
+this.camera = null;
+this.renderer = null;
+this.isStarted = false;
+}
+async init() {
+// Initialize MindAR
+this.mindarThree = new window.MINDAR.IMAGE.MindARThree({
+container: document.getElementById('container'),
+imageTargetSrc: './assets/targets.mind', // Your compiled markers
+});
+const { renderer, scene, camera } = this.mindarThree;
+this.renderer = renderer;
+this.scene = scene;
+this.camera = camera;
+// Add lighting
+const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+scene.add(light);
+// Setup educational content
+await this.setupEducationalContent();
+// Setup ML functionality for CS students
+if (mlModel) {
+this.setupMLFeatures();
+}
+// Start AR
+await this.mindarThree.start();
+document.getElementById('loading').style.display = 'none';
+this.isStarted = true;
+// Animation loop
+this.renderer.setAnimationLoop(() => {
+this.update();
+this.renderer.render(this.scene, this.camera);
+});
+}
+async setupEducationalContent() {
+// Create anchors for each marker
+const anchor0 = this.mindarThree.addAnchor(0);
+// Example: Add 3D educational content
+const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+const cube = new THREE.Mesh(geometry, material);
+anchor0.group.add(cube);
+// Add interactivity
+anchor0.onTargetFound = () => {
+document.getElementById('info').innerHTML = 'Маркер знайдено! Досліджуйте об\'єкт.';
+this.onMarkerFound(0);
+};
+anchor0.onTargetLost = () => {
+document.getElementById('info').innerHTML = 'Знайдіть маркер для продовження.';
+this.onMarkerLost(0);
+};
+}
+setupMLFeatures() {
+// Implement ML features for CS students
+// Example: Emotion detection, gesture recognition, etc.
+setInterval(() => {
+if (this.isStarted && mlModel) {
+this.processMLData();
+}
+}, 1000);
+}
+processMLData() {
+// Process ML data here
+// Example: Analyze user emotions, gestures, etc.
+}
+onMarkerFound(markerIndex) {
+// Handle marker found events
+console.log(`Marker ${markerIndex} found`);
+}
+onMarkerLost(markerIndex) {
+// Handle marker lost events
+console.log(`Marker ${markerIndex} lost`);
+}
+update() {
+// Update educational content
+// Animation, calculations, ML processing
+}
+}
+// Initialize application
+document.addEventListener('DOMContentLoaded', async () => {
+await loadMLModel();
+const app = new AREducationalApp();
+await app.init();
+});
+</script>
 </body>
 </html>
